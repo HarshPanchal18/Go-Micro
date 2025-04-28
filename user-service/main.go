@@ -35,7 +35,13 @@ func getUserById(writer http.ResponseWriter, request *http.Request) {
 	for _, user := range users {
 		if fmt.Sprintf("%d", user.ID) == id {
 			writer.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(writer).Encode(user)
+
+			err := json.NewEncoder(writer).Encode(user)
+			if err != nil {
+				log.Println(err.Error())
+				return
+			}
+
 			return
 		}
 	}
@@ -48,7 +54,11 @@ func listUsers(writer http.ResponseWriter, request *http.Request) {
 	defer lock.Unlock()
 
 	writer.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(writer).Encode(users)
+	err := json.NewEncoder(writer).Encode(users)
+	if err != nil {
+		log.Println(err.Error())
+		return
+	}
 }
 
 func main() {

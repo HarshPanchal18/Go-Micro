@@ -22,7 +22,7 @@ type User struct {
 }
 
 var (
-	orders = []Order{}
+	orders []Order
 	lock   = sync.Mutex{}
 )
 
@@ -67,7 +67,11 @@ func createOrder(writer http.ResponseWriter, request *http.Request) {
 	orders = append(orders, order)
 
 	writer.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(writer).Encode(orders)
+	err = json.NewEncoder(writer).Encode(orders)
+	if err != nil {
+		log.Println(err.Error())
+		return
+	}
 
 }
 
@@ -76,7 +80,12 @@ func listOrders(writer http.ResponseWriter, request *http.Request) {
 	defer lock.Unlock()
 
 	writer.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(writer).Encode(orders)
+	err := json.NewEncoder(writer).Encode(orders)
+	if err != nil {
+		log.Println(err.Error())
+		return
+	}
+
 }
 
 func main() {
