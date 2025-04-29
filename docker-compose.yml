@@ -13,4 +13,6 @@ services:
     depends_on:
       - user-service
     environment:
-      - USER_SERVICE_URL=http://user-service:8081
+      - USER_SERVICE_URL=http://user-service:8081 # Not 'localhost' because the services are running inside Docker containers, and Docker Compose provides an internal network for communication between containers.
+                                                  # If the services are moved to a different environment (e.g., staging or production), you don't need to hardcode or update localhost or IP addresses.
+                                                  # Docker's internal DNS resolves the service names automatically, making the setup more robust and easier to manage.

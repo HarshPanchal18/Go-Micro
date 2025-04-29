@@ -32,13 +32,13 @@ func createOrder(writer http.ResponseWriter, request *http.Request) {
 	item := request.FormValue("item")
 
 	userServiceURL := os.Getenv("USER_SERVICE_URL")
-	_, err := http.Get(userServiceURL + "/users?id=" + userID)
+	userResponse, err := http.Get(userServiceURL + "/user?id=" + userID)
 	if err != nil {
 		http.Error(writer, "Error connecting to user service", http.StatusInternalServerError)
 		return
 	}
 
-	// userResponse.Body.Close()
+	userResponse.Body.Close()
 
 	if userID == "" || item == "" {
 		http.Error(writer, "Missing user id or item", http.StatusBadRequest)
