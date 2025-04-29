@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"sync"
 )
 
@@ -23,12 +24,21 @@ type User struct {
 
 var (
 	orders []Order
-	lock   = sync.Mutex{}
+	mutex   = sync.Mutex{}
 )
 
 func createOrder(writer http.ResponseWriter, request *http.Request) {
 	userID := request.FormValue("user_id")
 	item := request.FormValue("item")
+
+	userServiceURL := os.Getenv("USER_SERVICE_URL")
+	_, err := http.Get(userServiceURL + "/users?id=" + userID)
+	if err != nil {
+		http.Error(writer, "Error connecting to user service", http.StatusInternalServerError)
+		return
+	}
+
+	// userResponse.Body.Close()
 
 	if userID == "" || item == "" {
 		http.Error(writer, "Missing user id or item", http.StatusBadRequest)
@@ -54,8 +64,8 @@ func createOrder(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	lock.Lock()
-	defer lock.Unlock()
+	mutex.Lock()
+	defer mutex.Unlock()
 
 	order := Order{
 		ID:     len(orders) + 1,
@@ -76,8 +86,8 @@ func createOrder(writer http.ResponseWriter, request *http.Request) {
 }
 
 func listOrders(writer http.ResponseWriter, request *http.Request) {
-	lock.Lock()
-	defer lock.Unlock()
+	mutex.Lock()
+	defer mutex.Unlock()
 
 	writer.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(writer).Encode(orders)

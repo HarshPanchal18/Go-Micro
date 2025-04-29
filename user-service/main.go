@@ -9,7 +9,7 @@ import (
 )
 
 type User struct {
-	ID   int    `json:"id"`
+	ID   int    `json:"id"` // <- this is the struct field tag for [de]serialization
 	Name string `json:"name"`
 }
 
@@ -18,7 +18,7 @@ var (
 		{ID: 1, Name: "John Doe"},
 		{ID: 2, Name: "Jane Smith"},
 	}
-	lock = sync.Mutex{}
+	mutex = sync.Mutex{}
 )
 
 func getUserById(writer http.ResponseWriter, request *http.Request) {
@@ -29,8 +29,8 @@ func getUserById(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	lock.Lock()
-	defer lock.Unlock()
+	mutex.Lock()
+	defer mutex.Unlock()
 
 	for _, user := range users {
 		if fmt.Sprintf("%d", user.ID) == id {
@@ -50,8 +50,8 @@ func getUserById(writer http.ResponseWriter, request *http.Request) {
 }
 
 func listUsers(writer http.ResponseWriter, request *http.Request) {
-	lock.Lock()
-	defer lock.Unlock()
+	mutex.Lock()
+	defer mutex.Unlock()
 
 	writer.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(writer).Encode(users)
