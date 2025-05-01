@@ -1,119 +1,32 @@
 package main
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
-	"os"
-	"sync"
+	"time"
+
+	pb "github.com/HarshPanchal18/Go-Micro/proto"
+
+	"google.golang.org/grpc"
 )
-
-type Order struct {
-	ID     int    `json:"id"`
-	UserID int    `json:"user_id"`
-	Item   string `json:"item"`
-	User   *User  `json:"user,omitempty"`
-}
-
-type User struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
-}
-
-var (
-	orders []Order
-	mutex   = sync.Mutex{}
-)
-
-func createOrder(writer http.ResponseWriter, request *http.Request) {
-	userID := request.FormValue("user_id")
-	item := request.FormValue("item")
-
-	userServiceURL := os.Getenv("USER_SERVICE_URL")
-	userResponse, err := http.Get(userServiceURL + "/user?id=" + userID)
-	if err != nil {
-		http.Error(writer, "Error connecting to user service", http.StatusInternalServerError)
-		return
-	}
-
-	userResponse.Body.Close()
-
-	if userID == "" || item == "" {
-		http.Error(writer, "Missing user id or item", http.StatusBadRequest)
-	}
-
-	response, err := http.Get("http://localhost:8081/user?id=" + userID)
-
-	if err != nil || response.StatusCode != http.StatusOK {
-		http.Error(writer, "Invalid User", http.StatusBadRequest)
-		return
-	}
-
-	defer response.Body.Close()
-
-	body, _ := ioutil.ReadAll(response.Body)
-
-	var user User
-
-	err = json.Unmarshal(body, &user)
-
-	if err != nil {
-		http.Error(writer, "Error parsing User", http.StatusInternalServerError)
-		return
-	}
-
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	order := Order{
-		ID:     len(orders) + 1,
-		UserID: user.ID,
-		Item:   item,
-		User:   &user,
-	}
-
-	orders = append(orders, order)
-
-	writer.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(writer).Encode(orders)
-	if err != nil {
-		log.Println(err.Error())
-		return
-	}
-
-}
-
-func listOrders(writer http.ResponseWriter, request *http.Request) {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	writer.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(writer).Encode(orders)
-	if err != nil {
-		log.Println(err.Error())
-		return
-	}
-
-}
 
 func main() {
-	http.HandleFunc("/orders", func(writer http.ResponseWriter, request *http.Request) {
-		switch request.Method {
+	conn, err := grpc.Dial("localhost:50051", grpc.WithInsecure(), grpc.WithBlock())
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	defer conn.Close()
 
-		case http.MethodGet:
-			listOrders(writer, request)
+	client := pb.NewUserServiceClient(conn)
 
-		case http.MethodPost:
-			createOrder(writer, request)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
 
-		default:
-			http.Error(writer, "Method not allowed", http.StatusMethodNotAllowed)
+	resp, err := client.GetUser(ctx, &pb.UserRequest{Id: 1})
+	if err != nil {
+		log.Fatalf("could not get user: %v", err)
+	}
 
-		}
-	})
-
-	fmt.Println("Order service listening on port 8082")
-	log.Fatal(http.ListenAndServe(":8082", nil))
+	fmt.Printf("User: ID=%d, Name=%s\n", resp.Id, resp.Name)
 }

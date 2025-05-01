@@ -1,70 +1,44 @@
 package main
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"log"
-	"net/http"
-	"sync"
+	"net"
+
+	pb "proto"
+
+	"google.golang.org/grpc"
 )
 
-type User struct {
-	ID   int    `json:"id"` // <- this is the struct field tag for [de]serialization
-	Name string `json:"name"`
+type server struct {
+	pb.UnimplementedUserServiceServer
 }
 
-var (
-	users = []User{
-		{ID: 1, Name: "John Doe"},
-		{ID: 2, Name: "Jane Smith"},
-	}
-	mutex = sync.Mutex{}
-)
-
-func getUserById(writer http.ResponseWriter, request *http.Request) {
-	id := request.URL.Query().Get("id")
-
-	if id == "" {
-		http.Error(writer, "ID is required", http.StatusBadRequest)
-		return
-	}
-
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	for _, user := range users {
-		if fmt.Sprintf("%d", user.ID) == id {
-			writer.Header().Set("Content-Type", "application/json")
-
-			err := json.NewEncoder(writer).Encode(user)
-			if err != nil {
-				log.Println(err.Error())
-				return
-			}
-
-			return
-		}
-	}
-
-	http.Error(writer, "User not found", http.StatusNotFound)
+var users = map[int32]string{
+	1: "Alice",
+	2: "Bob",
 }
 
-func listUsers(writer http.ResponseWriter, request *http.Request) {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	writer.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(writer).Encode(users)
-	if err != nil {
-		log.Println(err.Error())
-		return
+func (s *server) GetUser(ctx context.Context, req *pb.UserRequest) (*pb.UserResponse, error) {
+	name, exists := users[req.Id]
+	if !exists {
+		return nil, fmt.Errorf("User not found")
 	}
+	return &pb.UserResponse{Id: req.Id, Name: name}, nil
 }
 
 func main() {
-	http.HandleFunc("/users", listUsers)
-	http.HandleFunc("/user", getUserById)
+	listen, err := net.Listen("tcp", ":50051")
+	if err != nil {
+		log.Fatalf("Failed to listen: %v", err)
+	}
 
-	fmt.Println("Listening on port 8081")
-	log.Fatal(http.ListenAndServe(":8081", nil))
+	s := grpc.NewServer()
+	pb.RegisterUserServiceServer(s, &server{})
+
+	fmt.Println("User service running on gRPC port 50051...")
+	if err := s.Serve(listen); err != nil {
+		log.Fatalf("Failed to serve: %v", err)
+	}
 }

@@ -1,18 +1,24 @@
-version: '3.8'
-
 services:
   user-service:
     build: ./user-service
     ports:
-      - "8081:8081"
+      - "50051:50051"
+    depends_on:
+      - proto-compiler
 
   order-service:
     build: ./order-service
-    ports:
-      - "8082:8082"
     depends_on:
       - user-service
     environment:
-      - USER_SERVICE_URL=http://user-service:8081 # Not 'localhost' because the services are running inside Docker containers, and Docker Compose provides an internal network for communication between containers.
-                                                  # If the services are moved to a different environment (e.g., staging or production), you don't need to hardcode or update localhost or IP addresses.
-                                                  # Docker's internal DNS resolves the service names automatically, making the setup more robust and easier to manage.
+      - USER_SERVICE_URL=user-service:50051
+
+  proto-compiler:
+    build:
+      context: .
+      dockerfile: Dockerfile.proto
+    volumes:
+      - ./proto:/app/proto
+      - ./proto-gen:/app/proto-gen
+    command: >
+      sh -c "protoc --go_out=proto-gen --go-grpc_out=proto-gen proto/*.proto"

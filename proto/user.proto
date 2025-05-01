@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package user;
 
-option go_package = "."; // https://stackoverflow.com/questions/71054882/protoc-on-mac-os-goout-is-not-recognized-as-an-flag
+option go_package = "/proto"; // https://stackoverflow.com/questions/71054882/protoc-on-mac-os-goout-is-not-recognized-as-an-flag - protoc --go_out=. --go-grpc_out=. proto/user.proto
 
 service UserService {
     rpc GetUser(UserRequest) returns (UserResponse);
